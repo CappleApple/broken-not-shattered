@@ -8,6 +8,9 @@
     "ItemStackMixin",
     "PlayerMixin"
   ],
+  "client": [
+    "ItemRendererMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

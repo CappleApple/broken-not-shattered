@@ -1,6 +1,7 @@
 package com.cappleapple.brokennotshattered.mixin;
 
 import com.cappleapple.brokennotshattered.core.BrokenState;
+import com.cappleapple.brokennotshattered.core.FunctionalSuppression;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import net.minecraft.core.Holder;
@@ -8,8 +9,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -24,6 +23,7 @@ import net.neoforged.neoforge.common.ItemAbility;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -195,39 +195,31 @@ abstract class ItemStackMixin {
         }
     }
 
-    @Inject(
+    @ModifyArg(
         method = "forEachModifier(Lnet/minecraft/world/entity/EquipmentSlotGroup;Ljava/util/function/BiConsumer;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/item/enchantment/EnchantmentHelper;forEachModifier(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/entity/EquipmentSlotGroup;Ljava/util/function/BiConsumer;)V"
         ),
-        cancellable = true
+        index = 2
     )
-    private void bns$disableEnchantmentGroupAttributes(
-        EquipmentSlotGroup group,
-        BiConsumer<Holder<Attribute>, AttributeModifier> consumer,
-        CallbackInfo callback
+    private BiConsumer<Holder<Attribute>, AttributeModifier> bns$filterEnchantmentGroupAttributes(
+        BiConsumer<Holder<Attribute>, AttributeModifier> consumer
     ) {
-        if (BrokenState.isBroken(bns$self())) {
-            callback.cancel();
-        }
+        return FunctionalSuppression.filterEnchantmentAttributes(bns$self(), consumer);
     }
 
-    @Inject(
+    @ModifyArg(
         method = "forEachModifier(Lnet/minecraft/world/entity/EquipmentSlot;Ljava/util/function/BiConsumer;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/item/enchantment/EnchantmentHelper;forEachModifier(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/entity/EquipmentSlot;Ljava/util/function/BiConsumer;)V"
         ),
-        cancellable = true
+        index = 2
     )
-    private void bns$disableEnchantmentSlotAttributes(
-        EquipmentSlot slot,
-        BiConsumer<Holder<Attribute>, AttributeModifier> consumer,
-        CallbackInfo callback
+    private BiConsumer<Holder<Attribute>, AttributeModifier> bns$filterEnchantmentSlotAttributes(
+        BiConsumer<Holder<Attribute>, AttributeModifier> consumer
     ) {
-        if (BrokenState.isBroken(bns$self())) {
-            callback.cancel();
-        }
+        return FunctionalSuppression.filterEnchantmentAttributes(bns$self(), consumer);
     }
 }

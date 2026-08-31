@@ -21,14 +21,18 @@ Handled broken items:
 - mine at hand speed and do not qualify as the correct tool for drops;
 - expose no NeoForge `ItemAbility`, including tool actions, sweeping, shielding, casting, throwing, brushing, and fire-starting;
 - cannot start or finish their normal item-use actions;
-- contribute no standard attack damage, attack speed, armor, armor toughness, or knockback-resistance modifiers;
+- retain their attack-speed modifiers while contributing no standard attack damage, armor, armor toughness, or knockback-resistance modifiers;
 - do not run weapon hit callbacks or weapon damage/knockback enchantment modifiers;
 - cannot start or continue NeoForge elytra flight;
+- render their resolved GUI icon as two procedurally split halves separated by a narrow diagonal gap;
+- apply the same separation to compatible flat 2D held and dropped models while leaving true 3D models unchanged in those contexts;
 - append `[BROKEN]` to the normal tooltip by default.
 
 The player can still left-click blocks and entities. A broken tool mines approximately like a hand, and a broken weapon attacks approximately like an empty hand. Equipped armor remains equipped. Stored item components and modifiers are never deleted; their effects are filtered only while the durability-derived broken condition is true.
 
-The standard combat-attribute filter is deliberately conservative. It suppresses vanilla's normal weapon and armor combat attributes while leaving unrelated modded utility attributes alone.
+The standard combat-attribute filter is deliberately conservative. It suppresses vanilla's normal weapon damage and armor combat attributes while retaining attack speed and leaving unrelated modded utility attributes alone.
+
+The broken appearance is generated at render time from the resolved baked item model. It therefore follows resource-pack textures, item-model overrides, tinting, and glint without shipping per-item replacement assets. GUI icons always receive the effect. Held and dropped items receive it only when their resolved model is flat; true 3D models remain whole outside the GUI. The held/dropped halves gain textured interior cut faces across the model's full depth, so the exposed break does not show through. Repairing the item immediately restores its ordinary rendering.
 
 ## Datapack item tags
 

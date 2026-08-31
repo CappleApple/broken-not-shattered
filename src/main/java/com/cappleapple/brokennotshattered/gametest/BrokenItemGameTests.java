@@ -160,10 +160,15 @@ public final class BrokenItemGameTests {
         ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
         helper.assertTrue(hasAttribute(sword.getAttributeModifiers(), Attributes.ATTACK_DAMAGE), "baseline sword attack damage missing");
         helper.assertTrue(hasAttribute(sword.getAttributeModifiers(), Attributes.ATTACK_SPEED), "baseline sword attack speed missing");
+        List<ItemAttributeModifiers.Entry> attackSpeed = attributeEntries(sword.getAttributeModifiers(), Attributes.ATTACK_SPEED);
 
         sword.setDamageValue(sword.getMaxDamage());
         helper.assertFalse(hasAttribute(sword.getAttributeModifiers(), Attributes.ATTACK_DAMAGE), "broken sword retained attack damage");
-        helper.assertFalse(hasAttribute(sword.getAttributeModifiers(), Attributes.ATTACK_SPEED), "broken sword retained attack speed");
+        helper.assertTrue(hasAttribute(sword.getAttributeModifiers(), Attributes.ATTACK_SPEED), "broken sword lost attack speed");
+        helper.assertTrue(
+            attackSpeed.equals(attributeEntries(sword.getAttributeModifiers(), Attributes.ATTACK_SPEED)),
+            "broken sword attack speed changed"
+        );
 
         sword.setDamageValue(sword.getMaxDamage() - 1);
         helper.assertTrue(hasAttribute(sword.getAttributeModifiers(), Attributes.ATTACK_DAMAGE), "repaired sword attack damage did not return");
@@ -219,6 +224,13 @@ public final class BrokenItemGameTests {
 
     private static boolean hasAttribute(ItemAttributeModifiers modifiers, Holder<Attribute> attribute) {
         return modifiers.modifiers().stream().anyMatch(entry -> entry.attribute().equals(attribute));
+    }
+
+    private static List<ItemAttributeModifiers.Entry> attributeEntries(
+        ItemAttributeModifiers modifiers,
+        Holder<Attribute> attribute
+    ) {
+        return modifiers.modifiers().stream().filter(entry -> entry.attribute().equals(attribute)).toList();
     }
 
     private record AbilityCase(Item item, ItemAbility ability) {
