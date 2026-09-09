@@ -2,6 +2,7 @@ package com.cappleapple.brokennotshattered;
 
 import com.cappleapple.brokennotshattered.config.ClientConfig;
 import com.cappleapple.brokennotshattered.core.FunctionalSuppression;
+import com.cappleapple.brokennotshattered.registry.ModDataComponents;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -17,6 +18,7 @@ public final class BrokenNotShattered {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public BrokenNotShattered(IEventBus modEventBus, ModContainer container) {
+        ModDataComponents.REGISTER.register(modEventBus);
         container.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
 
         NeoForge.EVENT_BUS.addListener(FunctionalSuppression::onAttributeModifiers);

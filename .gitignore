@@ -3,6 +3,7 @@ build/
 out/
 run/
 run-client/
+run-client-smoke/
 run-gametest/
 .idea/
 *.iml

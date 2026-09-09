@@ -2,6 +2,7 @@ package com.cappleapple.brokennotshattered.gametest;
 
 import com.cappleapple.brokennotshattered.BrokenNotShattered;
 import com.cappleapple.brokennotshattered.core.BrokenState;
+import com.cappleapple.brokennotshattered.core.BreakPatternData;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.Holder;
@@ -88,6 +89,7 @@ public final class BrokenItemGameTests {
             helper.assertValueEqual(stack.getCount(), 1, item + " count changed");
             helper.assertValueEqual(stack.getDamageValue(), stack.getMaxDamage(), item + " did not reach zero remaining durability");
             helper.assertTrue(BrokenState.isBroken(stack), item + " was not recognized as broken");
+            helper.assertTrue(BreakPatternData.seed(stack) != null, item + " did not save its break seed");
             helper.assertValueEqual(breakCallbacks.get(), 1, item + " did not invoke its break callback exactly once");
             helper.assertValueEqual(stack.getHoverName().getString(), "Kept name", item + " lost its custom name");
             helper.assertValueEqual(stack.getEnchantmentLevel(typedMending), 1, item + " lost its enchantment");
@@ -106,6 +108,67 @@ public final class BrokenItemGameTests {
             helper.assertValueEqual(breakCallbacks.get(), 1, item + " replayed the break callback while already broken");
         }
 
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = "minecraft", template = EMPTY_TEMPLATE)
+    public static void savedBreakPatternSurvivesCopyDiskNetworkAndRepair(GameTestHelper helper) {
+        ItemStack first = new ItemStack(Items.DIAMOND_AXE);
+        ItemStack second = new ItemStack(Items.DIAMOND_AXE);
+        first.setDamageValue(first.getMaxDamage() - 1);
+        second.setDamageValue(second.getMaxDamage() - 1);
+        first.hurtAndBreak(1, helper.getLevel(), null, ignored -> {});
+        second.hurtAndBreak(1, helper.getLevel(), null, ignored -> {});
+        Long seed = BreakPatternData.seed(first);
+        helper.assertTrue(seed != null, "Break did not assign a seed");
+        helper.assertFalse(seed.equals(BreakPatternData.seed(second)), "Separately broken tools share a seed");
+        helper.assertTrue(seed.equals(BreakPatternData.seed(first.copy())), "Copy changed the seed");
+        ItemStack loaded = ItemStack.parseOptional(helper.getLevel().registryAccess(),
+            (CompoundTag) first.save(helper.getLevel().registryAccess()));
+        helper.assertTrue(seed.equals(BreakPatternData.seed(loaded)), "Save/load changed the seed");
+        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+            io.netty.buffer.Unpooled.buffer(), helper.getLevel().registryAccess());
+        try {
+            ItemStack.STREAM_CODEC.encode(buffer, loaded);
+            ItemStack received = ItemStack.STREAM_CODEC.decode(buffer);
+            helper.assertTrue(seed.equals(BreakPatternData.seed(received)), "Network sync changed the seed");
+        } finally {
+            buffer.release();
+        }
+        loaded.setDamageValue(0);
+        helper.assertTrue(seed.equals(BreakPatternData.seed(loaded)), "Repair removed the seed");
+        loaded.hurtAndBreak(loaded.getMaxDamage(), helper.getLevel(), null, ignored -> {});
+        helper.assertTrue(seed.equals(BreakPatternData.seed(loaded)), "Breaking again rerolled the item");
+        ItemStack legacy = new ItemStack(Items.GOLDEN_PICKAXE);
+        legacy.setDamageValue(legacy.getMaxDamage());
+        helper.assertTrue(BreakPatternData.seed(legacy) == null, "Legacy fixture already has seed");
+        legacy.inventoryTick(helper.getLevel(), helper.makeMockPlayer(GameType.SURVIVAL), 0, false);
+        helper.assertTrue(BreakPatternData.seed(legacy) != null, "Inventory tick failed to migrate old broken item");
+        helper.succeed();
+    }
+
+    @GameTest(templateNamespace = "minecraft", template = EMPTY_TEMPLATE)
+    public static void oldContainerItemsAreMarkedForSavingWhenMigrated(GameTestHelper helper) {
+        var player = helper.makeMockPlayer(GameType.SURVIVAL);
+        AtomicInteger dirty = new AtomicInteger();
+        var container = new net.minecraft.world.SimpleContainer(27) {
+            @Override public void setChanged() { super.setChanged(); dirty.incrementAndGet(); }
+        };
+        ItemStack legacy = new ItemStack(Items.GOLDEN_CHESTPLATE);
+        legacy.setDamageValue(legacy.getMaxDamage());
+        container.setItem(0, legacy);
+        dirty.set(0);
+        var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1, player.getInventory(), container);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+            new net.neoforged.neoforge.event.entity.player.PlayerContainerEvent.Open(player, menu));
+        helper.assertTrue(BreakPatternData.seed(legacy) != null, "Opening the container did not migrate its item");
+        helper.assertTrue(dirty.get() > 0, "Migration did not mark the container for saving");
+        Long seed = BreakPatternData.seed(legacy);
+        dirty.set(0);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+            new net.neoforged.neoforge.event.entity.player.PlayerContainerEvent.Open(player, menu));
+        helper.assertTrue(seed.equals(BreakPatternData.seed(legacy)), "Reopening the container rerolled the item");
+        helper.assertTrue(dirty.get() == 0, "Already migrated items kept marking the container dirty");
         helper.succeed();
     }
 

@@ -31,6 +31,20 @@ neoForge {
             gameDirectory = project.layout.projectDirectory.dir('run-client')
         }
 
+        clientSmoke {
+            client()
+            gameDirectory = project.layout.projectDirectory.dir('run-client-smoke')
+            systemProperty 'broken_not_shattered.clientSmoke', 'true'
+            systemProperty 'broken_not_shattered.smokeArmorLayer', project.findProperty('smokeArmorLayer') ?: 'vanilla'
+            systemProperty 'broken_not_shattered.smokeArmorSet', project.findProperty('smokeArmorSet') ?: ''
+            systemProperty 'broken_not_shattered.smokeEnchanted', project.findProperty('smokeEnchanted') ?: 'false'
+            systemProperty 'broken_not_shattered.smokeAnimationCompat', project.findProperty('smokeAnimationCompat') ?: 'false'
+            programArgument '--width'
+            programArgument '1000'
+            programArgument '--height'
+            programArgument '700'
+        }
+
         server {
             server()
             programArgument '--nogui'
@@ -63,6 +77,21 @@ dependencies {
 
 tasks.named('test', Test).configure {
     useJUnitPlatform()
+}
+
+def clientSmokeResult = layout.buildDirectory.file('client-smoke/result.txt')
+tasks.named('runClientSmoke').configure {
+    doFirst {
+        def result = clientSmokeResult.get().asFile.toPath()
+        java.nio.file.Files.createDirectories(result.parent)
+        java.nio.file.Files.writeString(result, 'RUNNING')
+    }
+    doLast {
+        def report = java.nio.file.Files.readString(clientSmokeResult.get().asFile.toPath())
+        if (!report.startsWith('PASS:')) {
+            throw new GradleException("Client appearance gate did not pass: ${report}")
+        }
+    }
 }
 
 tasks.named('jar', Jar).configure {

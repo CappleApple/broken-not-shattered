@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.ToDoubleFunction;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
@@ -11,11 +13,10 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.client.model.IQuadTransformer;
 
-/** Produces two separated, texture-preserving halves from ordinary baked item-model quads. */
+/** Follows complete jagged fractures, preserving UVs and capping flat item cuts at every turn. */
 @OnlyIn(Dist.CLIENT)
 final class BrokenIconGeometry {
-    static final float CUT_SLOPE = 0.18F;
-    static final float HALF_GAP = 1.0F / 32.0F;
+    static final float HALF_GAP = 1.0F / 64.0F;
 
     private static final float EPSILON = 1.0E-6F;
     private static final int STRIDE = IQuadTransformer.STRIDE;
@@ -23,11 +24,13 @@ final class BrokenIconGeometry {
     private BrokenIconGeometry() {
     }
 
-    static List<BakedQuad> splitAll(List<BakedQuad> quads, boolean addInteriorCaps) {
+    static List<BakedQuad> splitAll(List<BakedQuad> quads, boolean addInteriorCaps, WearPattern pattern) {
+        List<WearPattern.Path> seams = pattern.seams();
+        if (seams.isEmpty()) return quads;
         List<BakedQuad> split = new ArrayList<>(quads.size() * 2);
         for (BakedQuad quad : quads) {
             int[] originalVertices = quad.getVertices();
-            List<int[]> splitVertices = splitVertexData(originalVertices);
+            List<int[]> splitVertices = splitVertexData(originalVertices, seams);
             if (splitVertices.size() == 1 && splitVertices.getFirst() == originalVertices) {
                 split.add(quad);
                 continue;
@@ -45,12 +48,12 @@ final class BrokenIconGeometry {
             }
         }
         if (addInteriorCaps) {
-            addInteriorCaps(split, quads);
+            addInteriorCaps(split, quads, pattern);
         }
         return split;
     }
 
-    private static void addInteriorCaps(List<BakedQuad> result, List<BakedQuad> originalQuads) {
+    private static void addInteriorCaps(List<BakedQuad> result, List<BakedQuad> originalQuads, WearPattern pattern) {
         Set<LayerKey> cappedLayers = new HashSet<>();
         for (BakedQuad front : originalQuads) {
             if (!isGeneratedFrontFace(front)) {
@@ -79,7 +82,8 @@ final class BrokenIconGeometry {
                 sprite.getU0(),
                 sprite.getU1(),
                 sprite.getV0(),
-                sprite.getV1()
+                sprite.getV1(),
+                pattern
             )) {
                 result.add(new BakedQuad(
                     cap.vertices(),
@@ -140,64 +144,80 @@ final class BrokenIconGeometry {
     }
 
     static List<CapData> createCapVertexData(
-        int textureWidth,
-        int textureHeight,
-        float minZ,
-        float maxZ,
-        int color,
-        int light,
-        float minU,
-        float maxU,
-        float minV,
-        float maxV
+        int textureWidth, int textureHeight, float minZ, float maxZ, int color, int light,
+        float minU, float maxU, float minV, float maxV, WearPattern pattern
     ) {
         if (textureWidth <= 0 || textureHeight <= 0 || maxZ - minZ <= EPSILON) {
             return List.of();
         }
 
         List<CapData> caps = new ArrayList<>(textureHeight * 2);
-        int leftNormal = packNormal(1.0F, -CUT_SLOPE, 0.0F);
-        int rightNormal = packNormal(-1.0F, CUT_SLOPE, 0.0F);
-        for (int row = 0; row < textureHeight; row++) {
-            float yTop = 1.0F - (float) row / textureHeight;
-            float yBottom = 1.0F - (float) (row + 1) / textureHeight;
-            float xTop = cutX(yTop);
-            float xBottom = cutX(yBottom);
-            float cutPixelX = cutX((yTop + yBottom) * 0.5F) * textureWidth;
-            int leftPixel = clamp((int) Math.ceil(cutPixelX) - 1, 0, textureWidth - 1);
-            int rightPixel = clamp((int) Math.floor(cutPixelX), 0, textureWidth - 1);
+        List<WearPattern.Path> seams = pattern.seams();
+        for (int cut = 0; cut < seams.size(); cut++) {
+            WearPattern.Path seam = seams.get(cut);
+            float leftOffset = bandOffset(cut, seams.size());
+            float rightOffset = bandOffset(cut + 1, seams.size());
+            for (int segment = 1; segment < seam.points().size(); segment++) {
+                WearPattern.Point from = seam.points().get(segment - 1);
+                WearPattern.Point to = seam.points().get(segment);
+                float slope = (to.x() - from.x()) / (to.y() - from.y());
+                int leftNormal = packNormal(1, -slope, 0);
+                int rightNormal = packNormal(-1, slope, 0);
+                int firstRow = Math.max(0, (int) Math.floor((1 - to.y()) * textureHeight));
+                int lastRow = Math.min(textureHeight, (int) Math.ceil((1 - from.y()) * textureHeight));
+                for (int row = firstRow; row < lastRow; row++) {
+                    float yTop = Math.min(to.y(), 1.0F - (float) row / textureHeight);
+                    float yBottom = Math.max(from.y(), 1.0F - (float) (row + 1) / textureHeight);
+                    if (Math.abs(slope) > EPSILON) {
+                        float a = from.y() - from.x() / slope;
+                        float b = from.y() + (1 - from.x()) / slope;
+                        yBottom = Math.max(yBottom, Math.min(a, b));
+                        yTop = Math.min(yTop, Math.max(a, b));
+                    }
+                    if (yTop - yBottom <= EPSILON) continue;
+                    float xTop = seam.xAt(yTop);
+                    float xBottom = seam.xAt(yBottom);
+                    float cutPixelX = seam.xAt((yTop + yBottom) * 0.5F) * textureWidth;
+                    int leftPixel = clamp((int) Math.ceil(cutPixelX) - 1, 0, textureWidth - 1);
+                    int rightPixel = clamp((int) Math.floor(cutPixelX), 0, textureWidth - 1);
 
-            float leftUNear = mapUv((leftPixel + 0.25F) / textureWidth, minU, maxU);
-            float leftUFar = mapUv((leftPixel + 0.75F) / textureWidth, minU, maxU);
-            float rightUNear = mapUv((rightPixel + 0.25F) / textureWidth, minU, maxU);
-            float rightUFar = mapUv((rightPixel + 0.75F) / textureWidth, minU, maxU);
-            float vTop = mapUv((float) row / textureHeight, minV, maxV);
-            float vBottom = mapUv((float) (row + 1) / textureHeight, minV, maxV);
+                    float leftUNear = mapUv((leftPixel + 0.25F) / textureWidth, minU, maxU);
+                    float leftUFar = mapUv((leftPixel + 0.75F) / textureWidth, minU, maxU);
+                    float rightUNear = mapUv((rightPixel + 0.25F) / textureWidth, minU, maxU);
+                    float rightUFar = mapUv((rightPixel + 0.75F) / textureWidth, minU, maxU);
+                    float vTop = mapUv(1 - yTop, minV, maxV);
+                    float vBottom = mapUv(1 - yBottom, minV, maxV);
 
-            caps.add(new CapData(
-                packQuad(
-                    new Vertex(xBottom - HALF_GAP, yBottom, maxZ, color, leftUFar, vBottom, light, leftNormal),
-                    new Vertex(xBottom - HALF_GAP, yBottom, minZ, color, leftUNear, vBottom, light, leftNormal),
-                    new Vertex(xTop - HALF_GAP, yTop, minZ, color, leftUNear, vTop, light, leftNormal),
-                    new Vertex(xTop - HALF_GAP, yTop, maxZ, color, leftUFar, vTop, light, leftNormal)
-                ),
-                Direction.EAST
-            ));
-            caps.add(new CapData(
-                packQuad(
-                    new Vertex(xBottom + HALF_GAP, yBottom, minZ, color, rightUNear, vBottom, light, rightNormal),
-                    new Vertex(xBottom + HALF_GAP, yBottom, maxZ, color, rightUFar, vBottom, light, rightNormal),
-                    new Vertex(xTop + HALF_GAP, yTop, maxZ, color, rightUFar, vTop, light, rightNormal),
-                    new Vertex(xTop + HALF_GAP, yTop, minZ, color, rightUNear, vTop, light, rightNormal)
-                ),
-                Direction.WEST
-            ));
+                    caps.add(new CapData(
+                        packQuad(
+                            new Vertex(xBottom + leftOffset, yBottom, maxZ, color, leftUFar, vBottom, light, leftNormal),
+                            new Vertex(xBottom + leftOffset, yBottom, minZ, color, leftUNear, vBottom, light, leftNormal),
+                            new Vertex(xTop + leftOffset, yTop, minZ, color, leftUNear, vTop, light, leftNormal),
+                            new Vertex(xTop + leftOffset, yTop, maxZ, color, leftUFar, vTop, light, leftNormal)
+                        ),
+                        Direction.EAST
+                    ));
+                    caps.add(new CapData(
+                        packQuad(
+                            new Vertex(xBottom + rightOffset, yBottom, minZ, color, rightUNear, vBottom, light, rightNormal),
+                            new Vertex(xBottom + rightOffset, yBottom, maxZ, color, rightUFar, vBottom, light, rightNormal),
+                            new Vertex(xTop + rightOffset, yTop, maxZ, color, rightUFar, vTop, light, rightNormal),
+                            new Vertex(xTop + rightOffset, yTop, minZ, color, rightUNear, vTop, light, rightNormal)
+                        ),
+                        Direction.WEST
+                    ));
+                }
+            }
         }
         return caps;
     }
 
-    static List<int[]> splitVertexData(int[] source) {
-        if (source.length != STRIDE * 4) {
+    static List<int[]> splitVertexData(int[] source, WearPattern pattern) {
+        return splitVertexData(source, pattern.seams());
+    }
+
+    private static List<int[]> splitVertexData(int[] source, List<WearPattern.Path> seams) {
+        if (seams.isEmpty() || source.length != STRIDE * 4) {
             return List.of(source);
         }
 
@@ -206,23 +226,55 @@ final class BrokenIconGeometry {
             original.add(Vertex.read(source, vertexIndex * STRIDE));
         }
 
-        List<int[]> result = new ArrayList<>(4);
-        addPolygon(result, translate(clip(original, -1), -HALF_GAP));
-        addPolygon(result, translate(clip(original, 1), HALF_GAP));
+        // Clip at every bend before clipping sideways. Extending one diagonal over the whole
+        // quad would erase the turns and reopen a straight gap through the texture.
+        Bounds bounds = bounds(source);
+        TreeSet<Float> breaks = new TreeSet<>();
+        breaks.add(bounds.minY());
+        breaks.add(bounds.maxY());
+        for (WearPattern.Path seam : seams) for (WearPattern.Point point : seam.points()) {
+            if (point.y() > bounds.minY() + EPSILON && point.y() < bounds.maxY() - EPSILON) {
+                breaks.add(point.y());
+            }
+        }
+        List<Float> levels = List.copyOf(breaks);
+        List<int[]> result = new ArrayList<>();
+        for (int row = 0; row < Math.max(1, levels.size() - 1); row++) {
+            List<Vertex> strip = original;
+            if (levels.size() > 1) {
+                float bottom = levels.get(row);
+                float top = levels.get(row + 1);
+                strip = clip(strip, 1, vertex -> vertex.y() - bottom);
+                strip = clip(strip, -1, vertex -> vertex.y() - top);
+            }
+            for (int band = 0; band <= seams.size(); band++) {
+                List<Vertex> polygon = strip;
+                if (band > 0) {
+                    WearPattern.Path left = seams.get(band - 1);
+                    polygon = clip(polygon, 1, vertex -> vertex.x() - left.xAt(vertex.y()));
+                }
+                if (band < seams.size()) {
+                    WearPattern.Path right = seams.get(band);
+                    polygon = clip(polygon, -1, vertex -> vertex.x() - right.xAt(vertex.y()));
+                }
+                addPolygon(result, translate(polygon, bandOffset(band, seams.size())));
+            }
+        }
         return result.isEmpty() ? List.of(source) : result;
     }
 
-    private static List<Vertex> clip(List<Vertex> vertices, int side) {
+    private static List<Vertex> clip(List<Vertex> vertices, int side, ToDoubleFunction<Vertex> distance) {
+        if (vertices.isEmpty()) return vertices;
         List<Vertex> output = new ArrayList<>(vertices.size() + 1);
         Vertex previous = vertices.getLast();
-        float previousDistance = distance(previous);
+        double previousDistance = distance.applyAsDouble(previous);
         boolean previousInside = side * previousDistance >= -EPSILON;
 
         for (Vertex current : vertices) {
-            float currentDistance = distance(current);
+            double currentDistance = distance.applyAsDouble(current);
             boolean currentInside = side * currentDistance >= -EPSILON;
             if (currentInside != previousInside) {
-                float interpolation = previousDistance / (previousDistance - currentDistance);
+                float interpolation = (float) (previousDistance / (previousDistance - currentDistance));
                 output.add(previous.interpolate(current, interpolation));
             }
             if (currentInside) {
@@ -236,12 +288,8 @@ final class BrokenIconGeometry {
         return output;
     }
 
-    private static float distance(Vertex vertex) {
-        return vertex.x() - cutX(vertex.y());
-    }
-
-    private static float cutX(float y) {
-        return 0.5F + CUT_SLOPE * (y - 0.5F);
+    private static float bandOffset(int band, int seamCount) {
+        return (band - seamCount * 0.5F) * (2 * HALF_GAP);
     }
 
     private static List<Vertex> translate(List<Vertex> vertices, float xOffset) {

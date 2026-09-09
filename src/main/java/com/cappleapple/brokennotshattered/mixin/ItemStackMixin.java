@@ -1,6 +1,7 @@
 package com.cappleapple.brokennotshattered.mixin;
 
 import com.cappleapple.brokennotshattered.core.BrokenState;
+import com.cappleapple.brokennotshattered.core.BreakPatternData;
 import com.cappleapple.brokennotshattered.core.FunctionalSuppression;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -10,6 +11,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
@@ -46,6 +48,7 @@ abstract class ItemStackMixin {
         CallbackInfo callback
     ) {
         if (BrokenState.isBroken(bns$self())) {
+            BreakPatternData.ensureSeed(bns$self());
             callback.cancel();
         }
     }
@@ -65,8 +68,16 @@ abstract class ItemStackMixin {
         ItemStack stack = bns$self();
         if (BrokenState.isHandled(stack)) {
             stack.setDamageValue(stack.getMaxDamage());
+            BreakPatternData.ensureSeed(stack);
             onBreak.accept(stack.getItem());
             callback.cancel();
+        }
+    }
+
+    @Inject(method = "inventoryTick", at = @At("HEAD"))
+    private void bns$backfillBreakSeed(Level level, Entity entity, int slot, boolean selected, CallbackInfo callback) {
+        if (!level.isClientSide() && BreakPatternData.ensureSeed(bns$self()) && entity instanceof Player player) {
+            player.getInventory().setChanged();
         }
     }
 
