@@ -1,59 +1,68 @@
 # Broken Not Shattered
 
-Broken Not Shattered is a focused NeoForge 1.21.1 utility mod. Damageable items reach genuine zero remaining durability and become broken instead of disappearing.
+Broken Not Shattered lets durability items actually reach **broken** instead of disappearing.
 
-The original `ItemStack` stays in place, preserving its count, enchantments, custom name, model data, attachments/capabilities, and existing mod-specific state. The server adds a saved `broken_not_shattered:break_seed` component to identify its visual pattern. Brokenness is always derived from the current durability:
+When a handled item hits zero durability, the stack stays where it is with its name, enchantments, components, and other stored data intact. Repair it later and it works again.
+
+Built for Minecraft 1.21.1 / NeoForge.
+
+## What happens when an item breaks
+
+Brokenness is based on the item's real durability:
 
 ```text
 damage >= max damage
 ```
 
-The saved seed controls appearance only. Functional behavior continues to follow the real durability boundary, and the component uses normal item save data and inventory/equipment synchronization.
+There is no separate hidden health bar to keep in sync.
 
-## Repair
+While broken, normal tools and equipment stop doing the jobs durability is supposed to gate:
 
-Any mechanism that reduces the stack's damage below its maximum immediately makes it functional again. Vanilla anvils and Mending, modded repair machines, commands, scripts, and direct component mutation all work without calling a Broken Not Shattered API.
+- tools mine roughly like an empty hand and no longer count as the correct tool for drops;
+- NeoForge item abilities such as tool actions, shielding, brushing, casting, throwing, and fire-starting are unavailable;
+- normal item-use actions cannot be started or completed;
+- weapons keep their attack-speed timing but lose their standard weapon damage behavior;
+- armor stops contributing its normal armor/toughness/knockback-resistance attributes;
+- weapon hit/enchantment callbacks that depend on a functioning weapon are skipped; and
+- broken elytra cannot start or continue flight.
 
-## Broken behavior
+The item itself is not deleted or replaced. Its stored components remain there so repairing the same stack restores the original item.
 
-Handled broken items:
+## Repairing
 
-- mine at hand speed and do not qualify as the correct tool for drops;
-- expose no NeoForge `ItemAbility`, including tool actions, sweeping, shielding, casting, throwing, brushing, and fire-starting;
-- cannot start or finish their normal item-use actions;
-- retain their attack-speed modifiers while contributing no standard attack damage, armor, armor toughness, or knockback-resistance modifiers;
-- do not run weapon hit callbacks or weapon damage/knockback enchantment modifiers;
-- cannot start or continue NeoForge elytra flight;
-- generate individual worn textures with jagged, branching cracks, faded colors, darkening, and scuffs;
-- let cracks turn, fork repeatedly, and stop inside the texture, with occasional complete fractures separating GUI icons and compatible flat held/dropped models along matching jagged edges;
-- show worn textures on equipped humanoid armor, its material layers and trims, and elytra in real time;
-- append `[BROKEN]` to the normal tooltip by default.
+Anything that lowers the item's damage below its maximum repairs it automatically.
 
-The player can still left-click blocks and entities. A broken tool mines approximately like a hand, and a broken weapon attacks approximately like an empty hand. Equipped armor remains equipped. Stored item components and modifiers are never deleted; their effects are filtered only while the durability-derived broken condition is true.
+That includes vanilla anvils and Mending as well as modded repair blocks, scripts, commands, and direct component changes. Other mods do not need a Broken Not Shattered API just to repair an item.
 
-The standard combat-attribute filter is deliberately conservative. It suppresses vanilla's normal weapon damage and armor combat attributes while retaining attack speed and leaving unrelated modded utility attributes alone.
+## Broken appearance
 
-The broken appearance is generated from the resolved item sprites and armor textures, including resource-pack replacements. The server assigns a random seed the first time an item breaks: two independently broken gold pickaxes have different patterns. The seed survives copying, repair, subsequent breaks, network synchronization, saving, and world joins. A deliberate duplicate of an already seeded item retains its pattern. Temporary held-item render copies also reuse the equipped stack's geometry cache.
+Broken items can receive a worn version of their current texture with fading, darkening, scuffs, and seeded crack patterns. Some flat item models can also separate slightly along a complete fracture.
 
-Existing broken items without a seed receive one on the server through inventory ticks, equipped-item updates, dropped-item/item-frame loading, or opening their container. Renderers never assign seeds or display a provisional random pattern. Rebuilding the texture cache or reloading resources reproduces the saved pattern; changing appearance settings can intentionally change the generated result.
+The pattern is tied to the stack through:
 
-The client preserves item tinting, glint, model overrides, original render-pass state, and sprite animation metadata. Only the worn base texture uses remapped texture coordinates; enchantment glint keeps the model's original atlas coordinates and normal scale. GUI icons and flat held/dropped models separate along the generated seams, with textured interior faces through the model depth. True 3D held models receive texture wear without geometric separation. Other ordinary baked-item contexts, including item frames, receive texture wear too.
+```text
+broken_not_shattered:break_seed
+```
 
-Equipped armor uses the same stack pattern for its material textures and trims. The normal model, equipment slot, dye colors, glint, and animations remain in use. Material wear runs after NeoForge's shared armor texture selection, including replacement player armor layers that use that hook. GeckoLib armor that selects its own texture internally has a separate integration. Trims are supported in the standard humanoid armor layer and Mowzie's Mobs' replacement player layer. Breaking or repairing an item changes its appearance on the next render, including on entities already wearing it. Elytra use their resolved texture when it is available as a resource.
+so two independently broken copies can look different while the same item keeps its pattern through saves, repairs, and later breaks.
 
-Generated textures exist only in memory. The cache is bounded to 256 textures and 32 MiB of generated pixel storage, expires unused textures after 15 seconds, and clears on world changes and resource/config reloads. Individual source images larger than 1,048,576 pixels, unavailable textures (such as downloaded cape textures), and temporary cache exhaustion fall back to their original textures. Items with a completely custom renderer, and armor renderers that bypass NeoForge's texture hook or replace its result internally, need an integration with that renderer.
+The appearance is generated from the item's resolved textures, which means normal resource-pack replacements continue to matter. Standard armor layers, trims, and elytra are supported as well; custom renderers that completely bypass the usual item/armor rendering paths may need dedicated compatibility.
 
-## Datapack item tags
+A `[BROKEN]` tooltip is enabled by default.
 
-All tags are under the `broken_not_shattered` namespace and ship empty so packs can populate them.
+Appearance is client-side only. The broken gameplay rules are based on real durability and are enforced by common/server logic.
 
-- `broken_not_shattered:ignore` makes the mod do absolutely nothing to the item. The owning mod retains complete control.
-- `broken_not_shattered:shatters` retains normal Minecraft break/destruction behavior but does not opt out of unrelated owning-mod behavior.
-- `broken_not_shattered:protected` is a force-include escape hatch for unusual stacks that expose positive `DAMAGE` and `MAX_DAMAGE` components but are not reported as normally damageable.
+## Datapack tags
 
-Priority is `ignore`, then `shatters`, then normal/protected handling. Therefore `ignore` wins if an item appears in multiple tags.
+Packs can control unusual items with three item tags in the `broken_not_shattered` namespace:
 
-Example tag file at `data/example/tags/item/ignore.json`:
+- `broken_not_shattered:ignore` — Broken Not Shattered leaves the item completely alone.
+- `broken_not_shattered:shatters` — keep normal Minecraft destruction behavior.
+- `broken_not_shattered:protected` — force handling for unusual stacks that expose durability components but are not reported as normally damageable.
+
+Priority is `ignore`, then `shatters`, then normal/protected handling.
+
+Example:
 
 ```json
 {
@@ -64,9 +73,21 @@ Example tag file at `data/example/tags/item/ignore.json`:
 }
 ```
 
-## Client config
+placed at:
 
-NeoForge writes the client config as `broken_not_shattered-client.toml`:
+```text
+data/example/tags/item/ignore.json
+```
+
+## Client configuration
+
+NeoForge creates:
+
+```text
+config/broken_not_shattered-client.toml
+```
+
+The main options control the broken tooltip and the generated wear effect:
 
 ```toml
 [tooltip]
@@ -78,37 +99,35 @@ color = "RED"
 enabled = true
 minBreakLines = 2
 maxBreakLines = 4
-breakLineOverrides = []
 fading = 0.3
 darkening = 0.18
 scuffing = 0.18
 ```
 
-The default text uses `tooltip.broken_not_shattered.broken` for localization. A changed `text` value is displayed literally. `color` accepts Minecraft named text colors; an invalid or non-color name safely falls back to red.
+Per-item crack-count overrides are also supported, for example:
 
-The break-line range counts main cracks and is inclusive, with each end between `0` and `8`; reversed ends are sorted. Each main crack can develop smaller branches, including branches that split again. Most main cracks stop inside the texture; only complete fractures separate model pieces. To customize a particular item, set, for example, `breakLineOverrides = ["minecraft:golden_pickaxe=2-5"]`. The last entry for an item wins. A `0-0` range disables its break lines and geometric separation while retaining surface wear. Fading, darkening, and scuffing each accept `0.0` through `1.0`; zero disables that modifier. Setting appearance `enabled = false` restores ordinary visuals without changing broken-item mechanics. These settings take effect when NeoForge reloads the client config.
+```toml
+breakLineOverrides = ["minecraft:golden_pickaxe=2-5"]
+```
+
+A `0-0` range disables cracks/separation for that item while leaving the other wear effects available. Turning appearance off restores normal visuals without changing the broken-item mechanics.
 
 ## Compatibility notes
 
-- Durability preservation intercepts the mapped 1.21.1 `ItemStack.hurtAndBreak` path immediately before vanilla shrinks the stack.
-- The normal break callback still runs exactly once on the usable-to-broken transition, retaining the usual equipment break animation/sound and statistic where vanilla supplies that callback.
-- Further durability attempts on an already-broken handled stack are ignored, preventing repeat effects and overflow.
-- Creative players do not consume durability through vanilla paths, as usual. A stack explicitly set to zero durability is still broken in creative; there is no client-side bypass.
-- Functional restrictions are evaluated by shared/server game logic. Appearance and tooltip code run only on the client.
-- Custom items that bypass `ItemStack.hurtAndBreak` and implement their own destruction or functionality may require their owning pack/mod to use `ignore`, or a targeted integration outside this mod's generic scope.
+Broken Not Shattered handles the normal Minecraft/NeoForge durability path. Items from mods that destroy themselves manually or implement all of their functionality through custom code may need to be placed in `ignore` or given a targeted integration.
+
+The normal break callback still occurs when the item crosses from usable to broken, so the usual break animation/sound and statistics can still happen. Further damage attempts on an already broken handled item are ignored until it is repaired.
+
+The generated texture cache is bounded and cleared on resource/world/config changes. If a source texture cannot be processed safely, the original texture is used instead of breaking rendering.
 
 ## Building
 
-Use Java 21:
+Requires Java 21.
 
 ```text
-./gradlew build
-./gradlew test
+./gradlew test build
 ./gradlew runGameTestServer
 ./gradlew runServer
-./gradlew runClientSmoke
 ```
 
-`runClientSmoke` launches an isolated development client, creates a temporary flat world under `run-client-smoke`, and captures real renders in `build/client-smoke`. It checks distinct item patterns, equipped player armor and elytra, texture-object reuse across 30 frames with fresh stack copies, repair restoration, and unchanged tool pixels after item/resource reloads. `-PsmokeEnchanted=true` uses enchanted diamond axes and equipment with glint animation frozen for pixel comparisons. `-PsmokeAnimationCompat=true` requires EMF, ETF, Better Combat, its EMF compatibility bridge, and an active `FA+Player-v1.1.zip`; it also renders a Better Combat attack and captures enlarged first-person items.
-
-With Mowzie's Mobs installed in the test client's mods directory, `-PsmokeArmorLayer=mowzie` exercises its replacement armor layer. `-PsmokeArmorSet=irons_spellbooks:netherite_mage` checks Iron's Spells' GeckoLib armor. The test uses separate players with a fixed skin and removes party-hat cosmetic layers from its test renderer for repeatable screenshots. Dedicated GameTests cover seed generation, old-item migration, copying, save/load, network serialization, repair, and re-breaking. The smoke-test class and GameTests are excluded from the distributable JAR.
+There is also a development client smoke task for checking item, armor, elytra, glint, repair, and optional renderer compatibility. Those test fixtures are excluded from the release jar.
