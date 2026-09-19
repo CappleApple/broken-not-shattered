@@ -1,0 +1,67 @@
+plugins {
+    id 'fabric-loom' version '1.14.10'
+    id 'maven-publish'
+}
+version = "${mod_version}+mc${minecraft_version}-fabric"
+group = 'com.cappleapple.brokennotshattered'
+base { archivesName = 'broken_not_shattered' }
+repositories { mavenCentral() }
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+loom {
+    runs {
+        server { server(); programArg 'nogui' }
+        gameTest { server(); name 'Game Tests'; vmArg '-Dfabric-api.gametest'; runDir 'run-gametest' }
+    }
+}
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}
+java { toolchain.languageVersion = JavaLanguageVersion.of(21); withSourcesJar() }
+tasks.withType(JavaCompile).configureEach { options.release = 21; options.encoding = 'UTF-8' }
+test { useJUnitPlatform() }
+jar { from('LICENSE') { rename { "${it}_broken_not_shattered" } } }
+
+loom { accessWidenerPath = file('src/main/resources/broken_not_shattered.accesswidener') }
+sourceSets {
+    gametest { compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output; runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output }
+}
+loom {
+    mods {
+        broken_not_shattered { sourceSet sourceSets.main }
+        broken_not_shattered_tests { sourceSet sourceSets.gametest }
+    }
+    runs.gameTest { source sourceSets.gametest }
+}
+
+loom {
+    runs {
+        clientSmoke {
+            client(); source sourceSets.gametest; runDir 'run-client-smoke'
+            vmArg '-Dbroken_not_shattered.clientSmoke=true'
+            programArgs '--width', '1000', '--height', '700'
+        }
+    }
+}
+tasks.named('runClientSmoke').configure {
+    doFirst {
+        def dir=file('build/client-smoke');dir.mkdirs();new File(dir,'result.txt').text='RUNNING'
+        def run=file('run-client-smoke');run.mkdirs();new File(run,'options.txt').text='soundCategory_master:0.0\nfullscreen:false\npauseOnLostFocus:false\n'
+    }
+    doLast {
+        def result=file('build/client-smoke/result.txt').text
+        if(!result.startsWith('PASS:'))throw new GradleException(result)
+    }
+}
+
+tasks.withType(JavaExec).configureEach { maxHeapSize = '1G'; jvmArgs '-XX:ActiveProcessorCount=2' }
+
+dependencies { if (project.hasProperty('compatMod')) modLocalRuntime files(project.property('compatMod')) }

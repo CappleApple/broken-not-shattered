@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "broken_not_shattered",
+  "version": "${version}",
+  "name": "Broken Not Shattered",
+  "description": "Exhausted equipment remains repairable and loses its normal functionality until repaired.",
+  "authors": [
+    "CappleApple"
+  ],
+  "license": "CC BY-NC-SA 4.0 with Modpack/Server Exception",
+  "icon": "broken_not_shattered.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.cappleapple.brokennotshattered.BrokenNotShattered"
+    ],
+    "client": [
+      "com.cappleapple.brokennotshattered.client.BrokenAppearance"
+    ]
+  },
+  "mixins": [
+    "broken_not_shattered.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "accessWidener": "broken_not_shattered.accesswidener"
+}

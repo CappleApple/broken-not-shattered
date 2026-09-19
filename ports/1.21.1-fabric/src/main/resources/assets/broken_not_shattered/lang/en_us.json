@@ -1,0 +1,6 @@
+{
+  "tooltip.broken_not_shattered.broken": "[BROKEN]",
+  "tag.item.broken_not_shattered.ignore": "Ignored by Broken Not Shattered",
+  "tag.item.broken_not_shattered.shatters": "Shatters normally",
+  "tag.item.broken_not_shattered.protected": "Protected equipment"
+}

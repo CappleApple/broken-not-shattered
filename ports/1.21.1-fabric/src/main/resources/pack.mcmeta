@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": "Broken Not Shattered resources",
+    "pack_format": 34,
+    "supported_formats": [
+      34,
+      48
+    ]
+  }
+}
