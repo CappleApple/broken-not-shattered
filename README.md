@@ -1,5 +1,7 @@
 # Broken Not Shattered
 
+This branch contains the **Minecraft 26.3 / NeoForge** port, version 1.2.0, in [ports/26.3-neoforge](ports/26.3-neoforge/README.md). The original NeoForge 1.21.1 project remains at the repository root. See the [port guide](docs/ports.md) for installation, builds, and the other version branches.
+
 Broken Not Shattered lets durability items actually reach **broken** instead of disappearing.
 
 When a handled item hits zero durability, the stack stays where it is with its name, enchantments, components, and other stored data intact. Repair it later and it works again.
