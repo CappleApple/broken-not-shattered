@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "broken_not_shattered_smoke",
+  "version": "1.0.0",
+  "name": "Broken Not Shattered Development Gates",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.cappleapple.brokennotshattered.gametest.SmokeInitializer"],
+    "preLaunch": ["com.cappleapple.brokennotshattered.gametest.ClientMixinSmoke"]
+  },
+  "depends": {"broken_not_shattered": "*"}
+}
