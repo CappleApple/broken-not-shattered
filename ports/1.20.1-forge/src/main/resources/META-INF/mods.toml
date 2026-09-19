@@ -1,0 +1,22 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="CC BY-NC-SA 4.0 with Modpack/Server Exception"
+[[mods]]
+modId="broken_not_shattered"
+version="1.2.0"
+displayName="Broken Not Shattered"
+authors="CappleApple"
+description="Durable items remain repairable at zero durability, with disabled functions and visible wear."
+logoFile="broken_not_shattered.png"
+[[dependencies.broken_not_shattered]]
+modId="forge"
+mandatory=true
+versionRange="[47.4.23,48)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.broken_not_shattered]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1]"
+ordering="NONE"
+side="BOTH"

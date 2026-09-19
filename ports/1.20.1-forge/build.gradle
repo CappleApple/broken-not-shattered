@@ -1,0 +1,64 @@
+plugins {
+    id 'java-library'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+    id 'org.spongepowered.mixin' version '0.7.38'
+}
+version = '1.2.0'
+group = 'com.cappleapple.brokennotshattered'
+base { archivesName = 'broken_not_shattered-1.20.1-forge' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    copyIdeResources = false
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'info'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
+            mods { broken_not_shattered { source sourceSets.main } }
+        }
+        client {
+            workingDirectory project.file('run-client-smoke')
+            property 'broken_not_shattered.clientSmoke', project.hasProperty('clientSmoke').toString()
+            args '--width', '1000', '--height', '700'
+        }
+        server { args '--nogui' }
+        gameTestServer { property 'forge.enabledGameTestNamespaces', 'broken_not_shattered,minecraft' }
+    }
+}
+repositories { mavenCentral(); maven { url = 'https://repo.spongepowered.org/repository/maven-public/' } }
+mixin { add sourceSets.main, 'broken_not_shattered.refmap.json'; config 'broken_not_shattered.mixins.json' }
+jarJar.enable()
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.23'
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    implementation(annotationProcessor('io.github.llamalad7:mixinextras-common:0.5.0'))
+    implementation(jarJar('io.github.llamalad7:mixinextras-forge:0.5.0')) { jarJar.ranged(it, '[0.5.0,0.6)') }
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+test { useJUnitPlatform() }
+jar { archiveClassifier = 'slim'; manifest.attributes('MixinConfigs': 'broken_not_shattered.mixins.json'); exclude 'com/cappleapple/brokennotshattered/gametest/**'; finalizedBy 'reobfJar' }
+tasks.named('jarJar') { archiveClassifier = ''; exclude 'com/cappleapple/brokennotshattered/gametest/**'; finalizedBy 'reobfJarJar' }
+tasks.named('build') { dependsOn 'jarJar' }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 17 }
+
+// A fresh probe directory must be quiet and skip first-launch onboarding.
+tasks.matching { it.name == 'runClient' }.configureEach {
+    doFirst {
+        if (project.hasProperty('clientSmoke')) {
+            def options = file('run-client-smoke/options.txt')
+            options.parentFile.mkdirs()
+            options.text = 'soundCategory_master:0.0\npauseOnLostFocus:false\nfullscreen:false\nguiScale:2\nonboardAccessibility:false\n'
+            def forgeConfig = file('run-client-smoke/config/fml.toml')
+            forgeConfig.parentFile.mkdirs()
+            if (!forgeConfig.exists()) forgeConfig.text = 'earlyWindowControl = false\n'
+            else forgeConfig.text = forgeConfig.text.replace('earlyWindowControl = true', 'earlyWindowControl = false')
+        }
+    }
+}
+
+// Include the project's license alongside the bundled dependencies' licenses.
+tasks.withType(Jar).configureEach { from('LICENSE') }

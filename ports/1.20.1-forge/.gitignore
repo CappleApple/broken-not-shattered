@@ -1,0 +1,7 @@
+.gradle/
+build/
+run/
+run-client-smoke/
+*.log
+hs_err_pid*
+replay_pid*
