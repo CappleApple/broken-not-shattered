@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "broken_not_shattered",
+  "version": "${version}",
+  "name": "Broken Not Shattered",
+  "description": "Durable items break without disappearing and can be repaired.",
+  "authors": [
+    "CappleApple"
+  ],
+  "license": "CC BY-NC-SA 4.0 with Modpack/Server Exception",
+  "environment": "*",
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "entrypoints": {
+    "main": [
+      "com.cappleapple.brokennotshattered.BrokenNotShattered"
+    ],
+    "client": [
+      "com.cappleapple.brokennotshattered.client.BrokenNotShatteredClient"
+    ]
+  },
+  "mixins": [
+    "broken_not_shattered.mixins.json"
+  ],
+  "accessWidener": "broken_not_shattered.accesswidener"
+}

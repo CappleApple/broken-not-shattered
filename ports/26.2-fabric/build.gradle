@@ -1,0 +1,121 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.18.2'
+    id 'java-library'
+}
+version = "${mod_version}+mc${minecraft_version}-fabric"
+group = 'com.cappleapple.brokennotshattered'
+base { archivesName = 'broken_not_shattered' }
+repositories { mavenCentral() }
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+sourceSets {
+    smoke {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+loom {
+    mods {
+        broken_not_shattered { sourceSet sourceSets.main }
+        broken_not_shattered_smoke { sourceSet sourceSets.smoke }
+    }
+}
+java { toolchain.languageVersion = JavaLanguageVersion.of(25); withSourcesJar() }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 25 }
+processResources { inputs.property 'version', project.version; filesMatching('fabric.mod.json') { expand version: project.version } }
+test { useJUnitPlatform() }
+loom { runs { server { server(); runDir 'run-server'; programArg 'nogui' } } }
+loom { accessWidenerPath = file('src/main/resources/broken_not_shattered.accesswidener') }
+loom {
+    runs {
+        smokeServer {
+            source sourceSets.smoke
+            server()
+            runDir 'run-smoke'
+            vmArg '-Dbroken_not_shattered.smoke=true'
+            programArg 'nogui'
+        }
+    }
+}
+tasks.named('runSmokeServer') {
+    doFirst {
+        file('run-smoke').mkdirs()
+        file('run-smoke/eula.txt').text = 'eula=true\n'
+        file('run-smoke/server.properties').text = 'online-mode=false\nserver-port=0\nlevel-type=minecraft:flat\nspawn-protection=0\nview-distance=2\nsimulation-distance=2\n'
+        file('run-smoke/smoke-result.txt').text = 'RUNNING'
+    }
+    doLast {
+        if (!file('run-smoke/smoke-result.txt').text.startsWith('PASS:')) throw new GradleException(file('run-smoke/smoke-result.txt').text)
+    }
+}
+loom {
+    runs {
+        clientMixinSmoke {
+            source sourceSets.smoke
+            client()
+            runDir 'run-client-mixin'
+            vmArg '-Dbroken_not_shattered.clientMixinSmoke=true'
+        }
+    }
+}
+tasks.named('runClientMixinSmoke') {
+    doFirst { file('run-client-mixin').mkdirs(); file('run-client-mixin/client-mixin-result.txt').text = 'RUNNING' }
+    doLast { if (!file('run-client-mixin/client-mixin-result.txt').text.startsWith('PASS:')) throw new GradleException(file('run-client-mixin/client-mixin-result.txt').text) }
+}
+
+
+// The smoke source set is only part of development runs, never either published JAR.
+tasks.named('jar', Jar) { from('LICENSE') }
+tasks.named('sourcesJar', Jar) { from('LICENSE') }
+tasks.register('verifyDistribution') {
+    dependsOn tasks.named('jar'), tasks.named('sourcesJar')
+    doLast {
+        for (def archiveTask in [tasks.named('jar').get(), tasks.named('sourcesJar').get()]) {
+            new java.util.zip.ZipFile(archiveTask.archiveFile.get().asFile).withCloseable { zip ->
+                def entries = zip.entries().toList()
+                if (entries.any { it.name.contains('/gametest/') || it.name.contains('SmokeInitializer') }) {
+                    throw new GradleException("Development fixture leaked into ${archiveTask.archiveFile.get().asFile.name}")
+                }
+                def licenseEntry = zip.getEntry('LICENSE')
+                if (licenseEntry == null) throw new GradleException('License missing from archive')
+                if (zip.getInputStream(licenseEntry).getText('UTF-8') != file('LICENSE').getText('UTF-8')) {
+                    throw new GradleException('Incorrect license content in archive')
+                }
+            }
+        }
+        new java.util.zip.ZipFile(tasks.named('jar').get().archiveFile.get().asFile).withCloseable { zip ->
+            def metadata = new groovy.json.JsonSlurper().parse(zip.getInputStream(zip.getEntry('fabric.mod.json')))
+            if (metadata.id != 'broken_not_shattered' || metadata.version != project.version.toString()
+                    || metadata.depends.minecraft != project.minecraft_version
+                    || metadata.license != 'CC BY-NC-SA 4.0 with Modpack/Server Exception') {
+                throw new GradleException('Incorrect distribution metadata')
+            }
+            if (metadata.entrypoints.preLaunch != null || metadata.toString().contains('gametest')) {
+                throw new GradleException('Development entrypoint leaked into distribution metadata')
+            }
+            if (zip.getEntry(metadata.accessWidener) == null) throw new GradleException('Access widener missing')
+            for (def mixinFile in metadata.mixins) {
+                def mixins = new groovy.json.JsonSlurper().parse(zip.getInputStream(zip.getEntry(mixinFile)))
+                for (def name in (mixins.mixins + mixins.client)) {
+                    if (zip.getEntry(mixins.package.replace('.', '/') + '/' + name + '.class') == null) {
+                        throw new GradleException("Missing mixin class ${name}")
+                    }
+                }
+            }
+            for (def entry in zip.entries().toList().findAll { it.name.endsWith('.class') }) {
+                def constants = new String(zip.getInputStream(entry).bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+                if (constants.contains('brokennotshattered/gametest/')) {
+                    throw new GradleException("Development code reference in ${entry.name}")
+                }
+            }
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('verifyDistribution') }
+tasks.withType(Jar).configureEach { includeEmptyDirs = false }
