@@ -1,0 +1,134 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.147'
+    id 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${mod_id}-neoforge-${minecraft_version}"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+neoForge {
+    version = project.neo_version
+
+runs {
+        client {
+            client()
+            gameDirectory = project.layout.projectDirectory.dir('run-client')
+        }
+
+        clientMixinSmoke {
+            client()
+            gameDirectory = project.layout.projectDirectory.dir('run-client-mixin')
+            systemProperty 'broken_not_shattered.clientMixinSmoke', 'true'
+            systemProperty 'fml.earlyWindowControl', 'false'
+        }
+        smokeServer {
+            server()
+            gameDirectory = project.layout.projectDirectory.dir('run-smoke')
+            programArgument '--nogui'
+            systemProperty 'broken_not_shattered.runtimeSmoke', 'true'
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+tasks.named('jar', Jar).configure {
+    from('LICENSE')
+    exclude 'com/cappleapple/brokennotshattered/gametest/**'
+}
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version       : minecraft_version,
+            minecraft_version_range : minecraft_version_range,
+            neo_version             : neo_version,
+            loader_version_range    : loader_version_range,
+            mod_id                  : mod_id,
+            mod_name                : mod_name,
+            mod_license             : mod_license,
+            mod_version             : mod_version,
+            mod_authors             : mod_authors,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+    options.compilerArgs.add('-Xlint:deprecation')
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
+tasks.named('runSmokeServer').configure {
+    doFirst {
+        file('run-smoke').mkdirs()
+        file('run-smoke/eula.txt').text = 'eula=true\n'
+        file('run-smoke/server.properties').text = 'online-mode=false\nserver-ip=127.0.0.1\nserver-port=0\nlevel-type=minecraft:flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1}],"biome":"minecraft:plains"}\nview-distance=2\nsimulation-distance=2\n'
+        file('run-smoke/smoke-result.txt').text = 'RUNNING'
+    }
+    doLast {
+        def result = file('run-smoke/smoke-result.txt').text
+        if (!result.startsWith('PASS:')) throw new GradleException(result)
+    }
+}
+
+tasks.named('runClientMixinSmoke') {
+    doFirst {
+        file('run-client-mixin').mkdirs()
+        file('run-client-mixin/config').mkdirs()
+        file('run-client-mixin/config/fml.toml').text = 'earlyWindowControl=false\n'
+        file('run-client-mixin/client-mixin-result.txt').text = 'RUNNING'
+        file('run-client-mixin/options.txt').text = 'soundCategory_master:0.0\nfullscreen:false\n'
+    }
+    doLast {
+        def result = file('run-client-mixin/client-mixin-result.txt').text
+        if (!result.startsWith('PASS:')) throw new GradleException(result)
+    }
+}

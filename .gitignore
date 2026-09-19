@@ -13,3 +13,7 @@ run-gametest/
 *.hprof
 hs_err_pid*
 replay_pid*
+
+# Isolated version-port game and validation directories.
+ports/*/run*/
+ports/*/logs/
