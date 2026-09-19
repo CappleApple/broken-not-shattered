@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.cappleapple.brokennotshattered.gametest.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "ClientFrameSmokeMixin",
+    "WindowSmokeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

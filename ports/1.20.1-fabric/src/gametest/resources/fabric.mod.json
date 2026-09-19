@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "broken_not_shattered_tests",
+  "version": "1.0.0",
+  "name": "Broken Not Shattered runtime tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.cappleapple.brokennotshattered.gametest.BrokenItemGameTests"
+    ],
+    "client": [
+      "com.cappleapple.brokennotshattered.gametest.ClientAppearanceSmoke"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "bns_smoke.mixins.json",
+      "environment": "client"
+    }
+  ]
+}

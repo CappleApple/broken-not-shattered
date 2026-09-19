@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-19 - 1.2.0
+
+### Added
+
+- Add a Fabric build for Minecraft 1.20.1.
+- Add an independent port build and a Windows artifact helper while retaining the original NeoForge 1.21.1 build.
+
 ## 2026-09-09 - 1.1.3
 
 ### Changed
