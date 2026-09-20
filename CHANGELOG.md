@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-19 - 1.2.1
+
+### Changed
+
+- Replace the mod icon with the supplied compact PNG.
+
+### Fixed
+
+- Display the mod icon in Fabric 26.2 mod metadata.
+- Collect the current release JAR when older versions remain in the build output directory.
+
 ## 2026-09-19 - 1.2.0
 
 ### Added
