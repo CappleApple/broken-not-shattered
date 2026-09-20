@@ -1,6 +1,6 @@
 # Broken Not Shattered for Fabric 1.21.1
 
-Fabric port of Broken Not Shattered 1.2.0. Equipment remains in its slot at zero durability, keeps its data, and becomes usable again after repair. The original NeoForge project remains at the repository root.
+Fabric port of Broken Not Shattered 1.2.1. Equipment remains in its slot at zero durability, keeps its data, and becomes usable again after repair. The original NeoForge project remains at the repository root.
 
 ## Installation
 
@@ -8,7 +8,7 @@ Fabric port of Broken Not Shattered 1.2.0. Equipment remains in its slot at zero
 - Fabric API is required; this project builds against `0.116.17+1.21.1`.
 - Install the mod and Fabric API on both the client and dedicated server.
 
-Use `build/libs/broken_not_shattered-1.2.0+mc1.21.1-fabric.jar` after building. The `-sources.jar` is for development.
+Use `build/libs/broken_not_shattered-1.2.1+mc1.21.1-fabric.jar` after building. The `-sources.jar` is for development.
 
 ## Behavior
 
@@ -37,7 +37,7 @@ Client settings are stored in `config/broken_not_shattered-client.json`. Restart
 }
 ```
 
-Crack ranges are clamped to 0–8 and reversed ends are sorted. Fading, darkening, and scuffing range from 0 to 1. Zero cracks disables fractures. The default tooltip text uses the translation key `tooltip.broken_not_shattered.broken`; invalid colors fall back to red.
+Crack ranges are clamped to 0â€“8 and reversed ends are sorted. Fading, darkening, and scuffing range from 0 to 1. Zero cracks disables fractures. The default tooltip text uses the translation key `tooltip.broken_not_shattered.broken`; invalid colors fall back to red.
 
 Datapack item tags use these full paths, in priority order:
 

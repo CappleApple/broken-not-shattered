@@ -1,6 +1,6 @@
 # Broken Not Shattered
 
-This branch contains the **Minecraft 1.21.1 / Fabric** port, version 1.2.0, in [ports/1.21.1-fabric](ports/1.21.1-fabric/README.md). The original NeoForge 1.21.1 project remains at the repository root. See the [port guide](docs/ports.md) for installation, builds, and the other version branches.
+This branch contains the **Minecraft 1.21.1 / Fabric** port, version 1.2.1, in [ports/1.21.1-fabric](ports/1.21.1-fabric/README.md). The original NeoForge 1.21.1 project remains at the repository root. See the [port guide](docs/ports.md) for installation, builds, and the other version branches.
 
 Broken Not Shattered lets durability items actually reach **broken** instead of disappearing.
 
