@@ -3,7 +3,7 @@ loaderVersion="[47,)"
 license="CC BY-NC-SA 4.0 with Modpack/Server Exception"
 [[mods]]
 modId="broken_not_shattered"
-version="1.2.0"
+version="1.2.1"
 displayName="Broken Not Shattered"
 authors="CappleApple"
 description="Durable items remain repairable at zero durability, with disabled functions and visible wear."

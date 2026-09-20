@@ -1,6 +1,6 @@
 # Broken Not Shattered: Forge 1.20.1
 
-Forge port of Broken Not Shattered 1.2.0. The original NeoForge 1.21.1 project remains at the repository root.
+Forge port of Broken Not Shattered 1.2.1. The original NeoForge 1.21.1 project remains at the repository root.
 
 Durable items stop at zero durability instead of disappearing. They keep their name, enchantments, NBT, and repair history. Broken tools use hand mining speed and cannot harvest tool-required drops; broken weapons and armor lose combat benefits while retaining attack speed. Item use, tool actions, shields, and elytra flight stop until the item is repaired.
 
@@ -59,7 +59,7 @@ Run from this directory with Java 17:
 .\gradlew.bat runClient -PclientSmoke
 ```
 
-The distribution JAR is `build/libs/broken_not_shattered-1.20.1-forge-1.2.0.jar`. The `-slim.jar` is an intermediate artifact without the bundled MixinExtras library.
+The distribution JAR is `build/libs/broken_not_shattered-1.20.1-forge-1.2.1.jar`. The `-slim.jar` is an intermediate artifact without the bundled MixinExtras library.
 
 The opt-in client probe mutes sound, hides its window, releases the mouse, renders healthy and broken icons with multiple seeds and glint, captures `build/client-smoke/forge-1.20.1-items.png`, and exits. Development GameTests and the client probe are excluded from distribution JARs.
 
