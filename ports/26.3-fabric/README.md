@@ -10,7 +10,7 @@ Set `JAVA_HOME` to a Java 25 installation, then build from this directory:
 .\gradlew.bat build
 ```
 
-The installable JAR is written to `build/libs/broken_not_shattered-1.2.0+mc26.3-fabric.jar`. The `-sources.jar` is for development.
+The installable JAR is written to `build/libs/broken_not_shattered-1.2.1+mc26.3-fabric.jar`. The `-sources.jar` is for development.
 
 Client settings are written to `config/broken_not_shattered-client.json`. Press F3+T after editing to reload appearance settings. The settings match the original behavior:
 

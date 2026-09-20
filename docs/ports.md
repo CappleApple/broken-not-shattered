@@ -1,6 +1,6 @@
 # Minecraft 26.3 / Fabric port
 
-This branch contains Broken Not Shattered 1.2.0 for Minecraft 26.3 / Fabric under [ports/26.3-fabric](../ports/26.3-fabric/README.md). The repository root retains the original NeoForge 1.21.1 source and version 1.1.3. The original branch is [main](https://github.com/CappleApple/broken-not-shattered/tree/main).
+This branch contains Broken Not Shattered 1.2.1 for Minecraft 26.3 / Fabric under [ports/26.3-fabric](../ports/26.3-fabric/README.md). The repository root retains the original NeoForge 1.21.1 source and version 1.1.4. The original branch is [main](https://github.com/CappleApple/broken-not-shattered/tree/main).
 
 ## Installation
 

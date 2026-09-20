@@ -8,6 +8,7 @@
     "CappleApple"
   ],
   "license": "CC BY-NC-SA 4.0 with Modpack/Server Exception",
+  "icon": "broken_not_shattered.png",
   "environment": "*",
   "depends": {
     "fabricloader": ">=0.19.5",
