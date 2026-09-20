@@ -1,12 +1,12 @@
 # Broken Not Shattered for NeoForge 26.2
 
-Version 1.2.0 preserves durable stacks at zero durability and restores their functionality when repaired. The original NeoForge 1.21.1 project remains at the repository root.
+Version 1.2.1 preserves durable stacks at zero durability and restores their functionality when repaired. The original NeoForge 1.21.1 project remains at the repository root.
 
 ## Installation
 
 Use Minecraft 26.2, NeoForge 26.2.0.88, and Java 25. Install the matching JAR on both client and server.
 
-The distributable is `build/libs/broken_not_shattered-neoforge-26.2-1.2.0.jar`. No separate library mod is required.
+The distributable is `build/libs/broken_not_shattered-neoforge-26.2-1.2.1.jar`. No separate library mod is required.
 
 ## Behavior and configuration
 
