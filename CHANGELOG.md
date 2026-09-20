@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-19 - 1.1.4
+
+### Changed
+
+- Replace the mod icon with the supplied compact PNG.
+
 ## 2026-09-09 - 1.1.3
 
 ### Changed
