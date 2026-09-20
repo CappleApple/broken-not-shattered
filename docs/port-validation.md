@@ -1,6 +1,6 @@
 # Port validation
 
-Validation performed September 19, 2026. The repository-root NeoForge 1.21.1 implementation remains version 1.1.3; this NeoForge 26.3 port is version 1.2.0.
+Validation performed September 19, 2026. The repository-root NeoForge 1.21.1 implementation was version 1.1.3; this NeoForge 26.3 port was version 1.2.0.
 
 | Target | Build and unit tests | Dedicated server | Client check |
 | --- | --- | --- | --- |
@@ -18,3 +18,7 @@ This port uses the standard item and equipment render paths without the original
 See the [port guide](ports.md) and [target README](../ports/26.3-neoforge/README.md) for JDK requirements, dependencies, and exact commands. The [Windows build helper](../scripts/build-ports.ps1) collects the original and this target's installable JARs and SHA-256 hashes in `build/ports/`; `-Validate` also runs the server gates.
 
 JUnit reports are under `ports/26.3-neoforge/build/test-results/test/`. Generated reports, logs, game directories, and screenshots are excluded from source control.
+
+## Icon update: 1.1.4 / 1.2.1
+
+Rebuilt the original 1.1.4 and port 1.2.1 distribution JARs and verified that their metadata references the supplied PNG and that the packaged image matches it byte for byte. Gameplay source is unchanged; the runtime checks above were not repeated for this icon update.
