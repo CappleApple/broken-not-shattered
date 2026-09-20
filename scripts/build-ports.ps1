@@ -43,11 +43,16 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "Build failed: $name" }
             $jars = @(Get-ChildItem -LiteralPath (Join-Path $directory 'build/libs') -Filter '*.jar' |
                 Where-Object { $_.Name -notmatch '-(sources|javadoc|slim|dev)\.jar$' })
-            if ($name -eq 'original') {
-                $originalVersion = (Get-Content -LiteralPath (Join-Path $directory 'gradle.properties') |
-                    Where-Object { $_ -match '^mod_version=' }) -replace '^mod_version=', ''
-                $jars = @($jars | Where-Object { $_.Name -eq "broken_not_shattered-$originalVersion.jar" })
+            $releaseVersion = (Get-Content -LiteralPath (Join-Path $directory 'gradle.properties') |
+                Where-Object { $_ -match '^mod_version=' }) -replace '^mod_version=', ''
+            if (-not $releaseVersion) {
+                $versionLine = Get-Content -LiteralPath (Join-Path $directory 'build.gradle') |
+                    Where-Object { $_ -match "^version = '([^']+)'" }
+                if ($versionLine -match "^version = '([^']+)'") { $releaseVersion = $Matches[1] }
             }
+            if (-not $releaseVersion) { throw "Cannot find release version for $name" }
+            $releasePattern = '-' + [regex]::Escape($releaseVersion.Trim()) + '(?:\+mc[^/]+)?\.jar$'
+            $jars = @($jars | Where-Object { $_.Name -match $releasePattern })
             if ($jars.Count -ne 1) { throw "Expected one release JAR for $name; found $($jars.Count). Clean that target's build outputs first." }
             $outputName = if ($name -eq 'original') { $jars[0].BaseName + '-neoforge-1.21.1.jar' } else { $jars[0].Name }
             Copy-Item -LiteralPath $jars[0].FullName -Destination (Join-Path $output $outputName) -Force
